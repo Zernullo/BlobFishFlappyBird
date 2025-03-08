@@ -48,7 +48,7 @@ public class BlobFish extends JPanel implements ActionListener, KeyListener{
     int pipeX = width;
     int pipeY = 0;
     int pipeWidth = 64;
-    int pipeHeigt = 512;
+    int pipeHeight = 512;
 
 
 
@@ -58,7 +58,7 @@ public class BlobFish extends JPanel implements ActionListener, KeyListener{
         int x = pipeX;
         int y = pipeY;
         int width = pipeWidth;
-        int height = pipeHeigt;
+        int height = pipeHeight;
         Image img;
         boolean passed = false;
 
@@ -91,8 +91,9 @@ public class BlobFish extends JPanel implements ActionListener, KeyListener{
     Timer placePipesTimer;  //Generate new pipe base off time, Ex. Generate a pipe each 2 second
 
 
-
-    boolean gameOver = false;   //Determine if the game stops or starts
+    boolean gameStarted = false;//When game starts set fish in position first and once space is press game starts
+    boolean gameOver = false;   //Determine if the game is over
+    boolean gameReset = false;  //Reset the fish before the game start again
     double score = 0;           //Keep track of the score
 
 
@@ -101,7 +102,7 @@ public class BlobFish extends JPanel implements ActionListener, KeyListener{
     BlobFish() {
         setPreferredSize(new Dimension(width, height));
         setFocusable(true);
-        addKeyListener(this);//Make sure it checks the three key functions
+        
 
         //load images
         backgroundImage = new ImageIcon(getClass().getResource("background.png")).getImage();
@@ -126,8 +127,17 @@ public class BlobFish extends JPanel implements ActionListener, KeyListener{
         //game timer
         gameloop = new Timer(1000/60, this);
         gameloop.start();
+
+         setupKeyListener();
     }
 
+    // Method to set up key listener
+    private void setupKeyListener() {
+        addKeyListener(this);
+    }
+
+
+    
     public void PlacePipes(){
         //Face Down Pipe
         //Up pipe
@@ -136,7 +146,7 @@ public class BlobFish extends JPanel implements ActionListener, KeyListener{
         //Math.random return 0-1, multiplying it by height/2=450, so random return between 0-450
         //0 - 225 - (0->450)[random number between 0->450]
         //Gives the height of the pipe in random
-        int randomPipeY = (int)(pipeY - pipeHeigt/4 - Math.random()*(pipeHeigt/2));        
+        int randomPipeY = (int)(pipeY - pipeHeight/4 - Math.random()*(pipeHeight/2));        
         Pipe topPipe = new Pipe(topPipesImage);
         topPipe.y = randomPipeY;
         pipes.add(topPipe);
@@ -150,7 +160,7 @@ public class BlobFish extends JPanel implements ActionListener, KeyListener{
         Pipe downPipe = new Pipe(bottomPipeImage);
         //0 + (pipe height) + (Space between top and bottom pipe)
         //Basically the y position of the Face up pipe (bottom pipe)
-        downPipe.y = topPipe.y + pipeHeigt + openingSpace; 
+        downPipe.y = topPipe.y + pipeHeight + openingSpace; 
         pipes.add(downPipe);
     }
 
@@ -190,6 +200,7 @@ public class BlobFish extends JPanel implements ActionListener, KeyListener{
     //Fish movement
     public void move(){
         //fish
+        if (!gameStarted) return;
         velocityY += gravity;//prevent bird from continously moving up
         fish.y += velocityY;//move up
         fish.y = Math.max(fish.y, 0);//prevent fish from moving out of the screen in y coordinate (0 is the very top of the screen)
@@ -235,7 +246,7 @@ public class BlobFish extends JPanel implements ActionListener, KeyListener{
     
 
     //If fish collide with the pipe
-    public boolean collision(Fish a, Pipe b){
+    private boolean collision(Fish a, Pipe b){
         return  a.x < b.x + b.width &&  //a's top left corner doesn't reach b's top right corner
                 a.x + a.width > b.x &&  //a's top right corner doesn't reach b's top left corner
                 a.y < b.y + b.height && //a's top left corner doesn't reach b's bottom left corner
@@ -246,16 +257,28 @@ public class BlobFish extends JPanel implements ActionListener, KeyListener{
     @Override
     public void keyPressed(KeyEvent e) {
         if(e.getKeyCode() == KeyEvent.VK_SPACE){//Basically every time space is pressed, fish goes up
-            velocityY = -13;
-            if(gameOver){
-                //restart the game by resetting the conditions (reset the variable to it initial value)
-                fish.y = height/2; //Reset the fish back to the middle
+            if (!gameStarted) {
+                gameStarted = true; // Start the game on the first space press
+                velocityY = -13; // Apply the jump immediately
+            }
+            else if (gameOver && !gameReset) { //(reset the variable to it initial value)
+                // First space press resets fish position and variables but does not start the game
+                fish.y = height / 2; //Reset the fish back to the middle
                 velocityY = 0;
                 pipes.clear();
                 score = 0;
+                gameReset = true;  // Mark game as reset but not started yet
+                gameloop.start();
+            }
+            else if(gameOver){
+                //restart the game 
                 gameOver = false;
+                gameReset = false;
                 gameloop.start();
                 placePipesTimer.start();
+            }
+            else{
+                velocityY = -13;
             }
         }
     }
